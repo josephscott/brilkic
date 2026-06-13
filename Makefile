@@ -30,7 +30,7 @@ lint: ## Check if the code is valid
 analyze: ## Static analysis
 	@echo
 	@echo "--> PHPStan"
-	vendor/bin/phpstan analyse --memory-limit=512M
+	vendor/bin/phpstan analyse
 	@echo
 
 .PHONY: tests
