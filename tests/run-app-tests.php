@@ -76,3 +76,113 @@ test( 'blocks traversal to a real file at the repo root', function() : void {
 	expect( $output )->toBe( '' );
 	expect( http_response_code() )->toBe( 500 );
 } );
+
+/**
+ * Dispatch the given method/URI through run_app() and return the rendered
+ * output. The route table and superglobals are reset per test by the
+ * describe() hooks below.
+ */
+function dispatch( string $method, string $uri ) : string {
+	$_SERVER['REQUEST_METHOD'] = $method;
+	$_SERVER['REQUEST_URI'] = $uri;
+
+	ob_start();
+	run_app();
+
+	return (string) ob_get_clean();
+}
+
+describe( 'run_app()', function() : void {
+	beforeEach( function() : void {
+		// Router holds its routes in a private static array; clear it so each
+		// case dispatches against only the routes it registers.
+		( new ReflectionProperty( Router::class, 'routes' ) )->setValue( null, [] );
+
+		$this->server = $_SERVER;
+		http_response_code( 200 );
+	} );
+
+	afterEach( function() : void {
+		$_SERVER = $this->server;
+	} );
+
+	test( 'dispatches a matched route to its file', function() : void {
+		Router::get( '/hello', 'hello.php' );
+
+		expect( dispatch( 'GET', '/hello' ) )
+			->toBe( 'Hello from the route' );
+	} );
+
+	test( 'passes matched path parameters to the route', function() : void {
+		Router::get( '/item/{id}/{slug}', 'echo-vars.php' );
+
+		expect( dispatch( 'GET', '/item/42/hello-world' ) )
+			->toBe( 'Id: 42, Slug: hello-world' );
+	} );
+
+	test( 'responds 404 for an unmatched path', function() : void {
+		Router::get( '/hello', 'hello.php' );
+
+		expect( dispatch( 'GET', '/nope' ) )->toBe( '' );
+		expect( http_response_code() )->toBe( 404 );
+	} );
+
+	test( 'responds 405 when the path exists but the method does not', function() : void {
+		Router::get( '/only-get', 'hello.php' );
+
+		expect( dispatch( 'POST', '/only-get' ) )->toBe( '' );
+		expect( http_response_code() )->toBe( 405 );
+	} );
+
+	test( 'strips the query string before matching', function() : void {
+		Router::get( '/search', 'hello.php' );
+
+		expect( dispatch( 'GET', '/search?q=test&page=2' ) )
+			->toBe( 'Hello from the route' );
+	} );
+
+	test( 'rawurldecodes the path before matching', function() : void {
+		Router::get( "/caf\u{00e9}", 'hello.php' );
+
+		expect( dispatch( 'GET', '/caf%C3%A9' ) )
+			->toBe( 'Hello from the route' );
+	} );
+
+	test( 'falls back to GET / when $_SERVER is missing', function() : void {
+		Router::get( '/', 'hello.php' );
+
+		unset( $_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI'] );
+
+		ob_start();
+		run_app();
+		$output = (string) ob_get_clean();
+
+		expect( $output )->toBe( 'Hello from the route' );
+	} );
+
+	test( 'falls back to GET when the request method is not a string', function() : void {
+		Router::get( '/', 'hello.php' );
+
+		$_SERVER['REQUEST_METHOD'] = [ 'POST' ];
+		$_SERVER['REQUEST_URI'] = '/';
+
+		ob_start();
+		run_app();
+		$output = (string) ob_get_clean();
+
+		expect( $output )->toBe( 'Hello from the route' );
+	} );
+
+	test( 'falls back to / when the request URI is not a string', function() : void {
+		Router::get( '/', 'hello.php' );
+
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$_SERVER['REQUEST_URI'] = 123;
+
+		ob_start();
+		run_app();
+		$output = (string) ob_get_clean();
+
+		expect( $output )->toBe( 'Hello from the route' );
+	} );
+} );

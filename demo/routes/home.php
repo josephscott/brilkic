@@ -1,4 +1,4 @@
 <?php
 declare( strict_types = 1 );
 
-echo "This is the home, hello";
+echo 'This is the home, hello';
