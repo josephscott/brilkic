@@ -15,7 +15,8 @@ function template( string $file, mixed $data = [] ) : void {
 	// positionally and read via func_get_arg(), so it is never a
 	// variable in scope. The Config class stays available as it is
 	// global. Nothing else leaks into the template.
-	( static function ( mixed $data ) : void {
+	// @phpstan-ignore arguments.count (extra arg read via func_get_arg)
+	( static function( mixed $data ) : void {
 		require func_get_arg( 1 );
 	} )( $data, $file );
 }
