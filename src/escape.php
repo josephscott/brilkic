@@ -2,6 +2,7 @@
 declare( strict_types = 1 );
 
 function escaper() : Laminas\Escaper\Escaper {
+	/** @var Laminas\Escaper\Escaper|null $escaper */
 	static $escaper = null;
 	if ( $escaper === null ) {
 		$escaper = new Laminas\Escaper\Escaper( Config::CHAR_SET );
