@@ -8,5 +8,3 @@ final class Config {
 
 	const string TEMPLATE_PATH = __DIR__ . '/templates/';
 }
-
-require __DIR__ . '/url-routes.php';
