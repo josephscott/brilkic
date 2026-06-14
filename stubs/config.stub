@@ -9,4 +9,11 @@ final class Config {
 	// Sent (with charset appended) before dispatch; routes may override via
 	// header(). Set to '' to send no default Content-Type.
 	const string DEFAULT_CONTENT_TYPE = 'text/html';
+
+	// Optional CSRF settings. Both default to 'csrf_token' when omitted, so
+	// these only need defining to override the names. CSRF_TOKEN_FIELD is the
+	// hidden form field / $_POST key; CSRF_SESSION_KEY is the $_SESSION key the
+	// token is stored under.
+	const string CSRF_TOKEN_FIELD = 'csrf_token';
+	const string CSRF_SESSION_KEY = 'csrf_token';
 }

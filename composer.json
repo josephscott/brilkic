@@ -23,6 +23,7 @@
 			"src/"
 		],
 		"files": [
+			"src/csrf.php",
 			"src/escape.php",
 			"src/log-error.php",
 			"src/run-app.php",
