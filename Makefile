@@ -23,14 +23,14 @@ style: ## Fix any style issues
 lint: ## Check if the code is valid
 	@echo
 	@echo "--> Lint"
-	find app -name "*.php" -exec php -l {} \;
+	find src -name "*.php" -exec php -l {} \;
 	@echo
 
 .PHONY: analyze
 analyze: ## Static analysis
 	@echo
 	@echo "--> PHPStan"
-	vendor/bin/phpstan analyse
+	vendor/bin/phpstan analyze
 	@echo
 
 .PHONY: tests
