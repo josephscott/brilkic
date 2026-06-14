@@ -10,6 +10,8 @@ if ( ! class_exists( 'Config', false ) ) {
 		const string TEMPLATE_PATH = __DIR__ . '/templates/';
 
 		const string ROUTE_PATH = __DIR__ . '/routes/';
+
+		const string CHAR_SET = 'utf-8';
 	}
 }
 

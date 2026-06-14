@@ -7,4 +7,6 @@ final class Config {
 	const string ROUTE_PATH = __DIR__ . '/routes/';
 
 	const string TEMPLATE_PATH = __DIR__ . '/templates/';
+
+	const string CHAR_SET = 'utf-8';
 }

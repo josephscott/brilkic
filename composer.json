@@ -23,6 +23,7 @@
 			"src/"
 		],
 		"files": [
+			"src/escape.php",
 			"src/log-error.php",
 			"src/run-app.php",
 			"src/template.php"
