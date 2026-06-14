@@ -18,6 +18,16 @@
 		"friendsofphp/php-cs-fixer": "3.95.2",
 		"josephscott/phpcsfixer-config": "0.0.7"
 	},
+	"autoload": {
+		"classmap": [
+			"src/"
+		],
+		"files": [
+			"src/log-error.php",
+			"src/run-app.php",
+			"src/template.php"
+		]
+	},
 	"config": {
 		"allow-plugins": false,
 		"optimize-autoloader": true,
