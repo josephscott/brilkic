@@ -2,10 +2,23 @@
 declare( strict_types = 1 );
 
 function template( string $file, mixed $data = [] ) : void {
-	$file = Config::TEMPLATE_PATH . $file;
+	$requested = Config::TEMPLATE_PATH . $file;
 
-	if ( ! is_readable( $file ) ) {
-		log_error( "Template not readable: $file" );
+	// Canonicalize both the template root and the requested path, then
+	// require that the resolved file lives strictly inside the root. This
+	// neutralizes "../" traversal and symlinks that would otherwise let a
+	// caller escape Config::TEMPLATE_PATH. realpath() also returns false
+	// for paths that do not exist, which covers the missing-file case.
+	$base = realpath( Config::TEMPLATE_PATH );
+	$file = realpath( $requested );
+
+	if (
+		$base === false
+		|| $file === false
+		|| ! str_starts_with( $file, $base . DIRECTORY_SEPARATOR )
+		|| ! is_readable( $file )
+	) {
+		log_error( "Template not readable: $requested" );
 		return;
 	}
 
