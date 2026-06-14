@@ -7,9 +7,13 @@ declare( strict_types = 1 );
  * tests/tmp so the message is asserted rather than leaking to stderr as test
  * noise.
  *
+ * error_log() writes each entry as "[timestamp] <message>\n"; the normalized
+ * 'message' field strips that prefix and the trailing newline so callers can
+ * assert on the exact text log_error() handed off.
+ *
  * @param mixed $data
  *
- * @return array{ echoed: string, logged: string }
+ * @return array{ echoed: string, logged: string, message: string }
  */
 function capture_log_error( mixed $data ) : array {
 	$tmp = __DIR__ . '/tmp/log_error_' . uniqid( '', true ) . '.log';
@@ -28,32 +32,41 @@ function capture_log_error( mixed $data ) : array {
 		unlink( $tmp );
 	}
 
-	return [ 'echoed' => $echoed, 'logged' => $logged ];
+	$message = preg_replace( '/^\[[^\]]*\] /', '', $logged ) ?? '';
+	if ( str_ends_with( $message, "\n" ) ) {
+		$message = substr( $message, 0, -1 );
+	}
+
+	return [ 'echoed' => $echoed, 'logged' => $logged, 'message' => $message ];
 }
 
-test( 'does not render a string argument', function() : void {
-	// Only non-strings are passed through print_r(); a plain string yields an
-	// empty rendering.
-	expect( capture_log_error( 'boom' )['echoed'] )
-		->toBe( '' );
+test( 'never echoes, even for sensitive data', function() : void {
+	// log_error() must not write potentially sensitive, unescaped data to the
+	// output; everything goes to the error log instead.
+	expect( capture_log_error( 'boom' )['echoed'] )->toBe( '' );
+	expect( capture_log_error( [ 'token' => 'secret' ] )['echoed'] )->toBe( '' );
 } );
 
-test( 'renders an array argument with print_r', function() : void {
+test( 'logs a string argument verbatim', function() : void {
+	expect( capture_log_error( 'boom' )['message'] )->toBe( 'boom' );
+} );
+
+test( 'logs an array argument with print_r', function() : void {
 	$data = [ 'code' => 500, 'msg' => 'nope' ];
 
-	expect( capture_log_error( $data )['echoed'] )
+	expect( capture_log_error( $data )['message'] )
 		->toBe( print_r( $data, true ) );
 } );
 
-test( 'renders non-string scalars with print_r', function() : void {
-	expect( capture_log_error( 42 )['echoed'] )->toBe( '42' );
-	expect( capture_log_error( 3.5 )['echoed'] )->toBe( '3.5' );
-	expect( capture_log_error( true )['echoed'] )->toBe( '1' );
+test( 'logs non-string scalars with print_r', function() : void {
+	expect( capture_log_error( 42 )['message'] )->toBe( '42' );
+	expect( capture_log_error( 3.5 )['message'] )->toBe( '3.5' );
+	expect( capture_log_error( true )['message'] )->toBe( '1' );
 } );
 
-test( 'renders null and false as empty strings', function() : void {
-	expect( capture_log_error( null )['echoed'] )->toBe( '' );
-	expect( capture_log_error( false )['echoed'] )->toBe( '' );
+test( 'logs null and false as empty strings', function() : void {
+	expect( capture_log_error( null )['message'] )->toBe( '' );
+	expect( capture_log_error( false )['message'] )->toBe( '' );
 } );
 
 test( 'sends the rendered message to the error log', function() : void {
@@ -61,7 +74,7 @@ test( 'sends the rendered message to the error log', function() : void {
 
 	$result = capture_log_error( $data );
 
-	// The error log entry carries the same rendered text that was echoed.
-	expect( $result['logged'] )->toContain( $result['echoed'] );
+	// The error log entry carries the rendered text.
+	expect( $result['message'] )->toBe( print_r( $data, true ) );
 	expect( $result['logged'] )->toContain( '[where] => router' );
 } );
