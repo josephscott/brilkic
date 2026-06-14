@@ -5,6 +5,8 @@ use FastRoute\Dispatcher;
 use function FastRoute\simpleDispatcher;
 
 function run_app() : void {
+	send_default_headers();
+
 	$dispatcher = simpleDispatcher( static function( FastRoute\RouteCollector $r ) : void {
 		foreach ( Router::routes() as $route ) {
 			$r->addRoute( $route['method'], $route['path'], $route['file'] );
@@ -58,6 +60,28 @@ function run_app() : void {
 			http_response_code( 404 );
 			return;
 	}
+}
+
+function send_default_headers() : void {
+	// Under the CLI/test harness output may already be flushed; once headers
+	// are committed there is nothing to send, and emitting would warn. Bail
+	// rather than suppress, so genuine "headers already sent" cases surface
+	// at their real origin.
+	if ( headers_sent() ) {
+		return;
+	}
+
+	// Pin the wire charset to the one the escaper is built with so the two
+	// cannot drift; a utf-8-correct escaper served as another charset is
+	// bypassable. An empty DEFAULT_CONTENT_TYPE opts out (e.g. an API that
+	// sets its own type per route). nosniff is always sent to stop the
+	// browser second-guessing the declared type.
+	// @phpstan-ignore notIdentical.alwaysTrue (DEFAULT_CONTENT_TYPE is project-configurable; '' opts out)
+	if ( Config::DEFAULT_CONTENT_TYPE !== '' ) {
+		header( 'Content-Type: ' . Config::DEFAULT_CONTENT_TYPE . '; charset=' . Config::CHAR_SET );
+	}
+
+	header( 'X-Content-Type-Options: nosniff' );
 }
 
 function run_route( string $file, mixed $vars = [] ) : void {

@@ -5,4 +5,8 @@ final class Config {
 	const string ROUTE_PATH = '';
 	const string TEMPLATE_PATH = '';
 	const string CHAR_SET = 'utf-8';
+
+	// Sent (with charset appended) before dispatch; routes may override via
+	// header(). Set to '' to send no default Content-Type.
+	const string DEFAULT_CONTENT_TYPE = 'text/html';
 }

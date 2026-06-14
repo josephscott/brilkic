@@ -106,6 +106,22 @@ describe( 'run_app()', function() : void {
 		$_SERVER = $this->server;
 	} );
 
+	test( 'sends a charset-pinned content type and nosniff by default', function() : void {
+		if ( ! function_exists( 'xdebug_get_headers' ) ) {
+			$this->markTestSkipped( 'xdebug_get_headers() is required to inspect sent headers.' );
+		}
+
+		Router::get( '/', 'hello.php' );
+		dispatch( 'GET', '/' );
+
+		$headers = xdebug_get_headers();
+
+		expect( $headers )->toContain(
+			'Content-Type: ' . Config::DEFAULT_CONTENT_TYPE . '; charset=' . Config::CHAR_SET
+		);
+		expect( $headers )->toContain( 'X-Content-Type-Options: nosniff' );
+	} );
+
 	test( 'dispatches a matched route to its file', function() : void {
 		Router::get( '/hello', 'hello.php' );
 
