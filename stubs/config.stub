@@ -4,4 +4,5 @@ declare(strict_types = 1);
 final class Config {
 	const string ROUTE_PATH = '';
 	const string TEMPLATE_PATH = '';
+	const string CHAR_SET = 'utf-8';
 }
