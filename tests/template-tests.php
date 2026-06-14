@@ -1,16 +1,8 @@
 <?php
 declare( strict_types = 1 );
 
-// template() reads Config::TEMPLATE_PATH. The real Config lives in the demo
-// app and is not autoloaded for the suite, so define a test stand-in that
-// points at the fixture templates beside this file.
-if ( ! class_exists( 'Config', false ) ) {
-	final class Config {
-		const string TEMPLATE_PATH = __DIR__ . '/templates/';
-
-		const string ROUTE_PATH = __DIR__ . '/routes/';
-	}
-}
+// The shared Config test stand-in (pointing at the fixture dirs) is defined
+// in tests/Pest.php.
 
 /**
  * Run template() and return whatever it rendered to the output buffer.
