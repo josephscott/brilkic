@@ -61,10 +61,24 @@ function run_app() : void {
 }
 
 function run_route( string $file, mixed $vars = [] ) : void {
-	$file = Config::ROUTE_PATH . $file;
+	$requested = Config::ROUTE_PATH . $file;
 
-	if ( ! is_readable( $file ) ) {
-		log_error( "Route not readable: $file" );
+	// Canonicalize both the route root and the requested path, then require
+	// that the resolved file lives strictly inside the root. This mirrors
+	// template() and neutralizes "../" traversal and symlinks that would
+	// otherwise let a route escape Config::ROUTE_PATH. realpath() also
+	// returns false for paths that do not exist, covering the missing-file
+	// case.
+	$base = realpath( Config::ROUTE_PATH );
+	$file = realpath( $requested );
+
+	if (
+		$base === false
+		|| $file === false
+		|| ! str_starts_with( $file, $base . DIRECTORY_SEPARATOR )
+		|| ! is_readable( $file )
+	) {
+		log_error( "Route not readable: $requested" );
 		http_response_code( 500 );
 		return;
 	}
