@@ -6,6 +6,13 @@ on:
       - trunk
   pull_request:
 
+# Force JS-based actions (e.g. actions/cache, pulled in transitively by
+# ramsey/composer-install) onto Node 24. Node 20 is deprecated on GitHub
+# Actions runners; see
+# https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   make-all:
     name: make all (PHP ${{ matrix.php }})
