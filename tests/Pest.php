@@ -12,3 +12,10 @@ if ( ! class_exists( 'Config', false ) ) {
 		const string ROUTE_PATH = __DIR__ . '/routes/';
 	}
 }
+
+// Tests redirect error_log() and other transient output here. The directory
+// is gitignored, so it is absent on a fresh checkout (e.g. CI); create it up
+// front rather than letting writes to it fail silently.
+if ( ! is_dir( __DIR__ . '/tmp' ) ) {
+	mkdir( __DIR__ . '/tmp', 0o777, true );
+}
