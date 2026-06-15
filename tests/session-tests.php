@@ -1,0 +1,56 @@
+<?php
+declare( strict_types = 1 );
+
+// Session resume policy. The test Config (tests/Pest.php) defines no
+// SESSION_AUTO_RESUME, so these cases see the default (on). Any session a case
+// starts is kept under tests/tmp and closed between cases so state never leaks
+// across tests (the suite runs in a single process).
+describe( 'session', function() : void {
+	beforeEach( function() : void {
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
+
+		$this->cookie = $_COOKIE;
+		$_COOKIE = [];
+
+		// Keep any session the helper starts inside the test tmp dir rather than
+		// the system session path.
+		ini_set( 'session.save_path', __DIR__ . '/tmp' );
+	} );
+
+	afterEach( function() : void {
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
+
+		$_COOKIE = $this->cookie;
+	} );
+
+	test( 'auto-resume is on by default when Config omits SESSION_AUTO_RESUME', function() : void {
+		expect( defined( 'Config::SESSION_AUTO_RESUME' ) )->toBeFalse();
+		expect( session_auto_resume() )->toBeTrue();
+	} );
+
+	test( 'does not start a session when the client has no cookie', function() : void {
+		// The cheap path: no cookie means it returns before any session call, so
+		// a visitor with no session never starts one.
+		session_resume_if_present();
+
+		expect( session_status() )->toBe( PHP_SESSION_NONE );
+	} );
+
+	test( 'resumes and forces strict mode when the client presents a cookie', function() : void {
+		if ( headers_sent() ) {
+			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );
+		}
+
+		$_COOKIE[session_name()] = 'client-supplied-id';
+
+		session_resume_if_present();
+
+		expect( session_status() )->toBe( PHP_SESSION_ACTIVE );
+		// Fixation protection is pinned on regardless of php.ini.
+		expect( ini_get( 'session.use_strict_mode' ) )->toBe( '1' );
+	} );
+} );

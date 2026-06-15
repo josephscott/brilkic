@@ -27,6 +27,7 @@
 			"src/escape.php",
 			"src/log-error.php",
 			"src/run-app.php",
+			"src/session.php",
 			"src/template.php"
 		]
 	},

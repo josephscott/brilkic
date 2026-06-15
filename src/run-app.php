@@ -5,60 +5,81 @@ use FastRoute\Dispatcher;
 use function FastRoute\simpleDispatcher;
 
 function run_app() : void {
-	send_default_headers();
+	// Buffer the whole response. Nothing reaches the SAPI until ob_end_flush()
+	// in the finally below, so headers_sent() stays false for the entire route
+	// and template render. That is what lets the csrf_* helpers start a session
+	// lazily, mid-render, on just the pages that use one: the app no longer has
+	// to start a session eagerly on every request to beat the point where
+	// streamed output would commit the headers. Flushing in a finally keeps the
+	// buffer balanced for callers that wrap run_app() in their own buffer (the
+	// test harness does) and still emits whatever rendered if a route throws.
+	ob_start();
 
-	$dispatcher = simpleDispatcher( static function( FastRoute\RouteCollector $r ) : void {
-		foreach ( Router::routes() as $route ) {
-			$r->addRoute( $route['method'], $route['path'], $route['file'] );
+	try {
+		// Hook up an existing session before any route runs, so a request that
+		// continues an earlier session sees its data -- without starting a
+		// session for visitors who do not have one. On by default; an app opts
+		// out via Config::SESSION_AUTO_RESUME.
+		session_resume_if_present();
+
+		send_default_headers();
+
+		$dispatcher = simpleDispatcher( static function( FastRoute\RouteCollector $r ) : void {
+			foreach ( Router::routes() as $route ) {
+				$r->addRoute( $route['method'], $route['path'], $route['file'] );
+			}
+		} );
+
+		$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+		$uri = $_SERVER['REQUEST_URI'] ?? '/';
+
+		if ( ! is_string( $method ) ) {
+			$method = 'GET';
 		}
-	} );
 
-	$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-	$uri = $_SERVER['REQUEST_URI'] ?? '/';
+		if ( ! is_string( $uri ) ) {
+			$uri = '/';
+		}
 
-	if ( ! is_string( $method ) ) {
-		$method = 'GET';
-	}
+		// Only the path is matched, so drop any query string before dispatch.
+		$pos = strpos( $uri, '?' );
+		if ( $pos !== false ) {
+			$uri = substr( $uri, 0, $pos );
+		}
+		$uri = rawurldecode( $uri );
 
-	if ( ! is_string( $uri ) ) {
-		$uri = '/';
-	}
+		$result = $dispatcher->dispatch( $method, $uri );
 
-	// Only the path is matched, so drop any query string before dispatch.
-	$pos = strpos( $uri, '?' );
-	if ( $pos !== false ) {
-		$uri = substr( $uri, 0, $pos );
-	}
-	$uri = rawurldecode( $uri );
-
-	$result = $dispatcher->dispatch( $method, $uri );
-
-	switch ( $result[0] ) {
-		case Dispatcher::FOUND:
-			$file = $result[1];
-			if ( is_string( $file ) ) {
-				run_route( $file, $result[2] );
-			}
-			return;
-
-		case Dispatcher::METHOD_NOT_ALLOWED:
-			http_response_code( 405 );
-			$allowed = $result[1];
-			if ( is_array( $allowed ) ) {
-				$methods = [];
-				foreach ( $allowed as $name ) {
-					if ( is_string( $name ) ) {
-						$methods[] = $name;
-					}
+		switch ( $result[0] ) {
+			case Dispatcher::FOUND:
+				$file = $result[1];
+				if ( is_string( $file ) ) {
+					run_route( $file, $result[2] );
 				}
-				header( 'Allow: ' . implode( ', ', $methods ) );
-			}
-			return;
+				return;
 
-		case Dispatcher::NOT_FOUND:
-		default:
-			http_response_code( 404 );
-			return;
+			case Dispatcher::METHOD_NOT_ALLOWED:
+				http_response_code( 405 );
+				$allowed = $result[1];
+				if ( is_array( $allowed ) ) {
+					$methods = [];
+					foreach ( $allowed as $name ) {
+						if ( is_string( $name ) ) {
+							$methods[] = $name;
+						}
+					}
+					header( 'Allow: ' . implode( ', ', $methods ) );
+				}
+				return;
+
+			case Dispatcher::NOT_FOUND:
+			default:
+				http_response_code( 404 );
+				return;
+		}
+	} finally {
+		// Commit the buffered response: headers first, then the body.
+		ob_end_flush();
 	}
 }
 

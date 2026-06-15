@@ -106,18 +106,16 @@ function csrf_verify() : bool {
 
 /**
  * Ensure a session is active so the token has somewhere to live across the
- * form-render and form-submit requests.
+ * form-render and form-submit requests. This is the creation trigger: it starts
+ * a session because the caller is about to write one, regardless of whether the
+ * client already had one.
  *
- * An already-active session is reused. Otherwise a session is started only when
- * that can still succeed: once headers are committed (or under the CLI/test
- * harness where output is already flushed) session_start() cannot run, so fall
- * back to using $_SESSION as-is rather than emitting a "headers already sent"
- * warning -- mirroring send_default_headers(). When no session can be started,
- * the token helpers still operate safely on the $_SESSION superglobal: reads
- * are guarded with `?? null` and a write autovivifies it as an array.
+ * Delegates to session_start_safe(), so the same fixation protection and guards
+ * apply. When no session can be started (headers committed, or the CLI/test
+ * harness), the token helpers still operate safely on the $_SESSION
+ * superglobal: reads are guarded with `?? null` and a write autovivifies it as
+ * an array.
  */
 function csrf_session_start() : void {
-	if ( session_status() === PHP_SESSION_NONE && ! headers_sent() ) {
-		session_start();
-	}
+	session_start_safe();
 }

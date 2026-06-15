@@ -16,4 +16,10 @@ final class Config {
 	// token is stored under.
 	const string CSRF_TOKEN_FIELD = 'csrf_token';
 	const string CSRF_SESSION_KEY = 'csrf_token';
+
+	// Optional `const bool SESSION_AUTO_RESUME` (intentionally not declared
+	// here): run_app() resumes an existing session when the client presents its
+	// cookie, so a continued session's data is available before routes run.
+	// On by default; define it as false to turn the auto-resume off. Read by
+	// name (session_auto_resume()) so it stays optional.
 }
