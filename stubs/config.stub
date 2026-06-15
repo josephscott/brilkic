@@ -17,6 +17,12 @@ final class Config {
 	const string CSRF_TOKEN_FIELD = 'csrf_token';
 	const string CSRF_SESSION_KEY = 'csrf_token';
 
+	// Optional `const int CSRF_TOKEN_TTL` (intentionally not declared here):
+	// seconds a minted CSRF token stays valid before it expires. Defaults to
+	// 1800 (30 minutes) when omitted; csrf_token()/csrf_field() also take a
+	// per-call $ttl that overrides it. Read by name (csrf_token_ttl()) so it
+	// stays optional.
+
 	// Optional `const bool SESSION_AUTO_RESUME` (intentionally not declared
 	// here): run_app() resumes an existing session when the client presents its
 	// cookie, so a continued session's data is available before routes run.

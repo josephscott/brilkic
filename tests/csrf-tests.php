@@ -1,10 +1,9 @@
 <?php
 declare( strict_types = 1 );
 
-// The CSRF helpers store their token in $_SESSION. Under the CLI test harness a
-// real session cannot be started, so csrf_session_start() falls back to using
-// the $_SESSION superglobal directly. Reset it before each case so tokens from
-// one test never bleed into the next.
+// The CSRF helpers store their tokens in $_SESSION. Under the CLI test harness
+// csrf_session_start() operates on the $_SESSION superglobal directly. Reset it
+// before each case so tokens from one test never bleed into the next.
 describe( 'csrf', function() : void {
 	beforeEach( function() : void {
 		$_SESSION = [];
@@ -32,12 +31,10 @@ describe( 'csrf', function() : void {
 		expect( csrf_config( 'DOES_NOT_EXIST', 'fallback' ) )->toBe( 'fallback' );
 	} );
 
-	test( 'csrf_token() mints a token and stores it in the session', function() : void {
-		$token = csrf_token();
-
-		expect( $token )->toBeString();
-		expect( $token )->not->toBe( '' );
-		expect( $_SESSION[csrf_session_key()] )->toBe( $token );
+	test( 'csrf_token_ttl() defaults to 1800 seconds', function() : void {
+		// No CSRF_TOKEN_TTL on the test Config, so the 30-minute default holds.
+		expect( defined( 'Config::CSRF_TOKEN_TTL' ) )->toBeFalse();
+		expect( csrf_token_ttl() )->toBe( 1800 );
 	} );
 
 	test( 'csrf_token() mints a 64-character hex token', function() : void {
@@ -45,41 +42,89 @@ describe( 'csrf', function() : void {
 		expect( csrf_token() )->toMatch( '/^[0-9a-f]{64}$/' );
 	} );
 
-	test( 'csrf_token() reuses the stored token on repeat calls', function() : void {
-		expect( csrf_token() )->toBe( csrf_token() );
+	test( 'csrf_token() mints a new token on every call', function() : void {
+		// Single use: each call must produce its own token, not reuse one.
+		expect( csrf_token() )->not->toBe( csrf_token() );
 	} );
 
-	test( 'csrf_token() adopts a token already in the session', function() : void {
-		$_SESSION[csrf_session_key()] = 'preset-token';
-
-		expect( csrf_token() )->toBe( 'preset-token' );
-	} );
-
-	test( 'csrf_token() replaces a non-string token in the session', function() : void {
-		$_SESSION[csrf_session_key()] = [ 'not', 'a', 'string' ];
-
-		expect( csrf_token() )->toMatch( '/^[0-9a-f]{64}$/' );
-	} );
-
-	test( 'csrf_field() embeds the current token in a hidden input', function() : void {
+	test( 'csrf_token() stores the token in the pool with a future expiry', function() : void {
+		$before = time();
 		$token = csrf_token();
 
-		expect( csrf_field() )->toBe(
-			'<input type="hidden" name="' . csrf_token_field() . '" value="' . $token . '">'
-		);
+		$pool = $_SESSION[csrf_session_key()];
+
+		expect( $pool )->toBeArray();
+		expect( $pool )->toHaveKey( $token );
+		// Default TTL is 1800s; allow a second of slack for clock movement.
+		expect( $pool[$token] )->toBeGreaterThanOrEqual( $before + 1800 );
+		expect( $pool[$token] )->toBeLessThanOrEqual( time() + 1800 );
 	} );
 
-	test( 'csrf_field() mints a token when called first', function() : void {
+	test( 'csrf_token() honours a per-call TTL', function() : void {
+		$before = time();
+		$token = csrf_token( 60 );
+
+		$expiry = $_SESSION[csrf_session_key()][$token];
+
+		expect( $expiry )->toBeGreaterThanOrEqual( $before + 60 );
+		expect( $expiry )->toBeLessThanOrEqual( time() + 60 );
+	} );
+
+	test( 'csrf_token() recovers from a non-array pool value', function() : void {
+		// A leftover pre-pool single-string token (or any junk) is ignored and
+		// replaced rather than causing an error.
+		$_SESSION[csrf_session_key()] = 'legacy-single-token';
+
+		$token = csrf_token();
+
+		expect( $_SESSION[csrf_session_key()] )->toBe( [ $token => $_SESSION[csrf_session_key()][$token] ] );
+	} );
+
+	test( 'csrf_token() caps the pool at 100 tokens', function() : void {
+		for ( $i = 0; $i < 105; $i++ ) {
+			csrf_token();
+		}
+
+		expect( $_SESSION[csrf_session_key()] )->toHaveCount( 100 );
+	} );
+
+	test( 'csrf_field() embeds a fresh, valid token in a hidden input', function() : void {
 		$field = csrf_field();
 
-		expect( $_SESSION[csrf_session_key()] )->toBeString();
-		expect( $field )->toContain( 'value="' . $_SESSION[csrf_session_key()] . '"' );
+		expect( $field )->toStartWith( '<input type="hidden" name="csrf_token" value="' );
+
+		// The embedded token validates exactly once.
+		preg_match( '/value="([0-9a-f]{64})"/', $field, $m );
+		expect( $m[1] ?? '' )->toMatch( '/^[0-9a-f]{64}$/' );
+		expect( csrf_validate( $m[1] ) )->toBeTrue();
 	} );
 
-	test( 'csrf_validate() accepts the stored token', function() : void {
+	test( 'csrf_validate() accepts a minted token', function() : void {
+		expect( csrf_validate( csrf_token() ) )->toBeTrue();
+	} );
+
+	test( 'csrf_validate() consumes the token so it cannot be reused', function() : void {
 		$token = csrf_token();
 
 		expect( csrf_validate( $token ) )->toBeTrue();
+		// Single use: the replay fails.
+		expect( csrf_validate( $token ) )->toBeFalse();
+	} );
+
+	test( 'csrf_validate() consumes only the matching token', function() : void {
+		// Two forms / tabs open at once: spending one leaves the other usable.
+		$a = csrf_token();
+		$b = csrf_token();
+
+		expect( csrf_validate( $a ) )->toBeTrue();
+		expect( csrf_validate( $b ) )->toBeTrue();
+	} );
+
+	test( 'csrf_validate() rejects an expired token', function() : void {
+		// Inject a token whose expiry is already in the past.
+		$_SESSION[csrf_session_key()] = [ str_repeat( 'a', 64 ) => time() - 1 ];
+
+		expect( csrf_validate( str_repeat( 'a', 64 ) ) )->toBeFalse();
 	} );
 
 	test( 'csrf_validate() rejects a wrong token', function() : void {
@@ -102,10 +147,17 @@ describe( 'csrf', function() : void {
 	} );
 
 	test( 'csrf_verify() validates the token submitted in $_POST', function() : void {
-		$token = csrf_token();
-		$_POST[csrf_token_field()] = $token;
+		$_POST[csrf_token_field()] = csrf_token();
 
 		expect( csrf_verify() )->toBeTrue();
+	} );
+
+	test( 'csrf_verify() rejects a replayed token', function() : void {
+		$_POST[csrf_token_field()] = csrf_token();
+
+		expect( csrf_verify() )->toBeTrue();
+		// The same posted token cannot be verified twice.
+		expect( csrf_verify() )->toBeFalse();
 	} );
 
 	test( 'csrf_verify() rejects a missing or wrong posted token', function() : void {
