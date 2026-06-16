@@ -66,15 +66,15 @@ describe( 'session', function() : void {
 		expect( ini_get( 'session.cookie_samesite' ) )->toBe( 'Lax' );
 	} );
 
-	test( 'Secure defaults on when Config omits SESSION_COOKIE_SECURE', function() : void {
+	test( 'Secure defaults on when Config omits SESSION_OPTIONS', function() : void {
 		if ( headers_sent() ) {
 			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );
 		}
 
-		// The test Config (tests/Pest.php) defines no SESSION_COOKIE_SECURE, so
-		// the default applies -- on, so production is secure out of the box.
-		expect( defined( 'Config::SESSION_COOKIE_SECURE' ) )->toBeFalse();
-		expect( session_cookie_secure() )->toBeTrue();
+		// The test Config (tests/Pest.php) defines no SESSION_OPTIONS, so the
+		// default applies -- Secure on, so production is secure out of the box.
+		expect( defined( 'Config::SESSION_OPTIONS' ) )->toBeFalse();
+		expect( session_options() )->toBe( [] );
 
 		session_start_safe();
 

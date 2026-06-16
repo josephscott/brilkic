@@ -29,12 +29,16 @@ final class Config {
 	// On by default; define it as false to turn the auto-resume off. Read by
 	// name (session_auto_resume()) so it stays optional.
 
-	// Optional `const bool SESSION_COOKIE_SECURE` (intentionally not declared
-	// here): the Secure flag on the session cookie, so the browser only sends it
-	// over HTTPS. On by default (secure in production out of the box). Define it as
-	// false only for plain-HTTP local development, where a Secure cookie would
-	// never be returned. HttpOnly and SameSite=Lax are always on regardless. Read
-	// by name (session_cookie_secure()) so it stays optional.
+	// Optional `const array SESSION_OPTIONS` (intentionally not declared here):
+	// per-app session settings, passed straight to session_start(). Any session.*
+	// directive works (without the prefix) -- e.g. cookie_lifetime, gc_maxlifetime,
+	// cookie_path, cookie_domain, sid_length. The cookie is Secure (HTTPS-only) and
+	// SameSite=Lax by default; override with `[ 'cookie_secure' => false ]` for
+	// plain-HTTP local dev or `[ 'cookie_samesite' => 'None' ]` for a cross-site
+	// embed. use_strict_mode (fixation protection) and HttpOnly are forced on and
+	// cannot be overridden here. Read by name (session_options()) so it stays
+	// optional. Note: cookie_lifetime (browser) and gc_maxlifetime (server) are
+	// independent -- a persistent login wants both set.
 
 	// Optional trailing-slash redirect (all three intentionally not declared
 	// here; each is read by name so it stays optional):

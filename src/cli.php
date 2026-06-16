@@ -67,7 +67,8 @@ function brilkic_init( string $target ) : int {
 
 	$serve = rtrim( $target, '/' ) . '/public';
 	fwrite( STDOUT, "\nDone. Start the dev server with:\n" );
-	fwrite( STDOUT, "  BRILKIC_ENV=dev php -S localhost:8080 -t $serve\n" );
+	fwrite( STDOUT, "  php -S localhost:8080 -t $serve\n" );
+	fwrite( STDOUT, "\n(Local dev is plain HTTP -- uncomment SESSION_OPTIONS in init.php to use sessions.)\n" );
 
 	return 0;
 }

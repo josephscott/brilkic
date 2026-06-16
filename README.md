@@ -14,14 +14,14 @@ composer require josephscott/brilkic
 
 ### Fastest path: scaffold a starter site
 
-Generate a runnable site (entry point, dev/prod config, a home page, header/footer templates, and 404/500 error routes) into the current directory:
+Generate a runnable site (entry point, config, a home page, header/footer templates, and 404/500 error routes) into the current directory:
 
 ```sh
 vendor/bin/brilkic init        # or: vendor/bin/brilkic init path/to/dir
-BRILKIC_ENV=dev php -S localhost:8080 -t public
+php -S localhost:8080 -t public
 ```
 
-The scaffold never overwrites existing files — it aborts if any are already present. It writes two config files: `init-prod.php` (loaded by default, HTTPS-ready) and `init-dev.php` (loaded when `BRILKIC_ENV=dev`, with the Secure session cookie turned off for plain-HTTP local work). `init.php` picks between them.
+The scaffold never overwrites existing files — it aborts if any are already present. It writes a single `init.php` that defines your `Config` class, HTTPS-ready out of the box (the session cookie is `Secure`). For plain-HTTP local work, uncomment the `SESSION_OPTIONS` line in `init.php` to turn `Secure` off.
 
 ### By hand
 
@@ -124,7 +124,7 @@ Inside a route file, matched URL parameters are available as `$vars`. Error rout
 ### Behavior worth knowing
 
 - The whole response is buffered, so CSRF and session helpers can start a session lazily mid-render — only on pages that need one. Visitors without a session never touch the session subsystem.
-- Sessions are started with `session.use_strict_mode` forced on (fixation protection) and the cookie pinned `HttpOnly` + `SameSite=Lax` + `Secure`; plain-HTTP local dev opts out of `Secure` with `Config::SESSION_COOKIE_SECURE = false`. An existing session is auto-resumed when the client presents its cookie.
+- Sessions are started with `session.use_strict_mode` and `HttpOnly` forced on (fixation protection plus keeping the id away from JavaScript) — these can't be overridden. The cookie is `SameSite=Lax` + `Secure` by default; the whole `session.*` surface (lifetime, GC, path, domain, …) is tunable via `Config::SESSION_OPTIONS`, e.g. `[ 'cookie_secure' => false ]` for plain-HTTP local dev. An existing session is auto-resumed when the client presents its cookie.
 - Route and template paths are canonicalized and confined to their configured roots, neutralizing `../` traversal and symlink escapes.
 - A route that throws is logged, the half-rendered output is discarded, and the `500` handler runs.
 - `X-Content-Type-Options: nosniff` is always sent; `Content-Type` (with charset) is sent before dispatch unless opted out.
@@ -143,7 +143,7 @@ All configuration lives as constants on your `Config` class. Only `ROUTE_PATH` a
 | `CSRF_SESSION_KEY` | `string` | `csrf_token` | `$_SESSION` key the token pool is stored under. |
 | `CSRF_TOKEN_TTL` | `int` | `1800` | Seconds a minted token stays valid. A per-call `$ttl` overrides it. |
 | `SESSION_AUTO_RESUME` | `bool` | `true` | Resume an existing session when the client presents its cookie, before routes run. Set `false` for a stateless API. |
-| `SESSION_COOKIE_SECURE` | `bool` | `true` | `Secure` flag on the session cookie (HTTPS-only). On by default; set `false` only for plain-HTTP local dev, where the browser would otherwise never return the cookie. `HttpOnly` and `SameSite=Lax` are always on. |
+| `SESSION_OPTIONS` | `array` | `[]` | Per-app overrides passed straight to `session_start()` — any `session.*` directive without the prefix (`cookie_lifetime`, `gc_maxlifetime`, `cookie_path`, `cookie_domain`, `sid_length`, …). Cookie defaults to `Secure` + `SameSite=Lax`; set `[ 'cookie_secure' => false ]` for plain-HTTP local dev or `[ 'cookie_samesite' => 'None' ]` for a cross-site embed. `use_strict_mode` and `cookie_httponly` are forced on and can't be overridden. `cookie_lifetime` (browser) and `gc_maxlifetime` (server) are independent — a persistent login wants both. |
 | `TRAILING_SLASH_REDIRECT` | `bool` | `true` | When a path doesn't match, try its trailing-slash variant and redirect to it if registered (rather than 404). Set `false` to disable. |
 | `TRAILING_SLASH_ADD` | `bool` | `false` | Redirect direction. `false` strips a trailing slash (`/csrf/` → `/csrf`); `true` adds one (`/csrf` → `/csrf/`). |
 | `TRAILING_SLASH_REDIRECT_CODE` | `int` | `302` | Status for the trailing-slash redirect. `302` (temporary) or `301` (permanent, cacheable). |

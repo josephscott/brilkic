@@ -18,11 +18,13 @@ final class Config {
 	// off, e.g. for a stateless API that never uses sessions.
 	// const bool SESSION_AUTO_RESUME = false;
 
-	// The session cookie is always HttpOnly and SameSite=Lax, and Secure (HTTPS
-	// only) by default. This demo is served over plain HTTP via `php -S`, where a
-	// Secure cookie would never be returned by the browser, so it opts out here.
-	// A real HTTPS deployment should delete this line to keep Secure on.
-	const bool SESSION_COOKIE_SECURE = false;
+	// Per-app session overrides, passed straight to session_start(); any session.*
+	// directive is fair game (cookie_lifetime, gc_maxlifetime, cookie_path, ...).
+	// use_strict_mode and HttpOnly are always forced on regardless. The cookie is
+	// Secure (HTTPS only) by default, but this demo is served over plain HTTP via
+	// `php -S`, where a Secure cookie would never be returned by the browser, so
+	// it opts out here. A real HTTPS deployment should delete this override.
+	const array SESSION_OPTIONS = [ 'cookie_secure' => false ];
 
 	// When a path does not match, run_app() tries its trailing-slash variant and
 	// redirects to it if that is a registered route -- so "/csrf/" lands on

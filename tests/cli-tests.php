@@ -30,8 +30,6 @@ describe( 'cli scaffold', function() : void {
 		// The pieces a runnable site needs are all present.
 		expect( $result['created'] )->toContain( 'public/index.php' );
 		expect( $result['created'] )->toContain( 'init.php' );
-		expect( $result['created'] )->toContain( 'init-dev.php' );
-		expect( $result['created'] )->toContain( 'init-prod.php' );
 		expect( $result['created'] )->toContain( 'url-routes.php' );
 		expect( $result['created'] )->toContain( 'routes/home.php' );
 		expect( $result['created'] )->toContain( 'routes/error-404.php' );
@@ -40,16 +38,16 @@ describe( 'cli scaffold', function() : void {
 		expect( $result['created'] )->toContain( 'templates/footer.php' );
 	} );
 
-	test( 'dev and prod configs differ on the Secure cookie', function() : void {
+	test( 'the single init config is Secure (HTTPS) by default', function() : void {
 		brilkic_scaffold( $this->skeleton, $this->target );
 
-		$dev = (string) file_get_contents( $this->target . '/init-dev.php' );
-		$prod = (string) file_get_contents( $this->target . '/init-prod.php' );
+		$init = (string) file_get_contents( $this->target . '/init.php' );
 
-		// Dev opts out of the Secure cookie for plain HTTP; prod leaves the secure
-		// default in place.
-		expect( $dev )->toContain( 'SESSION_COOKIE_SECURE = false' );
-		expect( $prod )->not->toContain( 'SESSION_COOKIE_SECURE = false' );
+		// One config, HTTPS-ready: the Secure-off override ships commented out, so
+		// the cookie is Secure out of the box.
+		expect( $init )->toContain( 'final class Config' );
+		expect( $init )->toContain( "// const array SESSION_OPTIONS = [ 'cookie_secure' => false ];" );
+		expect( $init )->not->toContain( "\n\tconst array SESSION_OPTIONS" );
 	} );
 
 	test( 'refuses to overwrite and writes nothing when a file already exists', function() : void {

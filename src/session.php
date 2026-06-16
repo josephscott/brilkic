@@ -2,57 +2,79 @@
 declare( strict_types = 1 );
 
 /**
- * Start a session with session-fixation protection forced on.
+ * Start a session, applying brilkic's hardened defaults and any per-app overrides.
  *
- * session.use_strict_mode makes PHP reject a session ID it did not issue --
- * generating a fresh one -- instead of adopting an attacker-supplied ID. PHP's
- * built-in default is off and only the distributed production php.ini turns it
- * on, so it is pinned here, immediately before every start, rather than left to
- * deployment config. This is the single place brilkic starts a session, so the
- * setting cannot be forgotten.
+ * PHP's session_start() accepts an options array that overrides any session.*
+ * directive for this start -- cookie_lifetime, gc_maxlifetime, cookie_path,
+ * cookie_domain, sid_length and the rest -- so the full session surface is
+ * exposed through one Config knob (SESSION_OPTIONS) rather than a constant per
+ * setting. The options are layered in three bands:
  *
- * The guards mirror the rest of the framework: an already-active session is
- * left alone, and no session is begun once headers are committed (or under the
- * CLI/test harness where output is already flushed) since session_start()
- * cannot run then -- callers still operate safely on the $_SESSION superglobal.
+ *   1. Overridable defaults -- the cookie is Secure (HTTPS-only) and SameSite=Lax
+ *      out of the box, both off/empty in vanilla PHP. An app overrides either:
+ *      plain-HTTP local dev sets cookie_secure => false, a cross-site embed sets
+ *      cookie_samesite => 'None'.
+ *   2. The app's SESSION_OPTIONS -- anything it sets wins over the defaults above.
+ *   3. Hard floors -- use_strict_mode and cookie_httponly are merged LAST, so an
+ *      app cannot weaken them. use_strict_mode makes PHP reject a session ID it
+ *      did not issue (fixation protection) instead of adopting an attacker-
+ *      supplied one; cookie_httponly keeps the id out of JavaScript's reach so an
+ *      XSS cannot lift it. Both default off in PHP and are pure footguns to
+ *      disable, so they are pinned here regardless of deployment php.ini.
+ *
+ * This is the single place brilkic starts a session, so the hardening cannot be
+ * forgotten. The guards mirror the rest of the framework: an already-active
+ * session is left alone, and no session is begun once headers are committed (or
+ * under the CLI/test harness where output is already flushed) since
+ * session_start() cannot run then -- callers still operate safely on the
+ * $_SESSION superglobal.
  */
 function session_start_safe() : void {
 	if ( session_status() !== PHP_SESSION_NONE || headers_sent() ) {
 		return;
 	}
 
-	// Must be set before session_start(); ini_set() on a session.* setting only
-	// takes effect while no session is active, which the guard above ensures.
-	ini_set( 'session.use_strict_mode', '1' );
+	$options = array_merge(
+		// 1. Overridable secure-by-default cookie attributes.
+		[
+			'cookie_secure'   => true,
+			'cookie_samesite' => 'Lax',
+		],
+		// 2. App overrides -- the full session.* surface plus read_and_close.
+		session_options(),
+		// 3. Hard floors -- merged last so SESSION_OPTIONS cannot turn them off.
+		[
+			'use_strict_mode' => true,
+			'cookie_httponly' => true,
+		],
+	);
 
-	// Harden the session cookie. HttpOnly keeps it out of JavaScript's reach, so
-	// an XSS cannot lift the session id; SameSite=Lax stops the cookie riding
-	// along on cross-site requests (CSRF defence in depth). Both default off/empty
-	// in vanilla PHP -- the same gap as use_strict_mode -- so they are pinned here
-	// rather than left to deployment php.ini.
-	ini_set( 'session.cookie_httponly', '1' );
-	ini_set( 'session.cookie_samesite', 'Lax' );
-
-	// The Secure flag (cookie sent only over HTTPS) is on by default -- production
-	// is the case to get right out of the box. A plain-HTTP local dev setup, where
-	// the browser would refuse to return a Secure cookie, opts out via Config.
-	ini_set( 'session.cookie_secure', session_cookie_secure() ? '1' : '0' );
-
-	session_start();
+	session_start( $options );
 }
 
 /**
- * Whether the session cookie carries the Secure flag, so the browser only sends
- * it over HTTPS. Defaults to true so production is secure by default. Read by name
- * so the constant stays optional: a plain-HTTP local dev environment opts out with
- * `const bool SESSION_COOKIE_SECURE = false` on its Config class -- otherwise the
- * browser would refuse to return the cookie and the session would never resume.
- * Only an explicit `false` turns it off; any other value leaves it on.
+ * Per-app session overrides, passed straight to session_start(). An app sets
+ * `const array SESSION_OPTIONS` on its Config class with any session.* directive
+ * (without the `session.` prefix) -- e.g. `[ 'cookie_lifetime' => 86400,
+ * 'gc_maxlifetime' => 86400 ]` for a day-long persistent session. Read by name
+ * so the constant stays optional, and a non-array value is ignored. Note that
+ * cookie_lifetime (how long the browser keeps the cookie) and gc_maxlifetime
+ * (how long the server keeps the data) are independent: a persistent login wants
+ * both, or the cookie outlives the data the GC reclaims.
+ *
+ * @return array<array-key, mixed>
  */
-function session_cookie_secure() : bool {
-	$constant = 'Config::SESSION_COOKIE_SECURE';
+function session_options() : array {
+	$constant = 'Config::SESSION_OPTIONS';
 
-	return ! ( defined( $constant ) && constant( $constant ) === false );
+	if ( defined( $constant ) ) {
+		$value = constant( $constant );
+		if ( is_array( $value ) ) {
+			return $value;
+		}
+	}
+
+	return [];
 }
 
 /**
