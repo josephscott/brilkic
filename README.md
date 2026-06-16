@@ -12,6 +12,19 @@ Install:
 composer require josephscott/brilkic
 ```
 
+### Fastest path: scaffold a starter site
+
+Generate a runnable site (entry point, dev/prod config, a home page, header/footer templates, and 404/500 error routes) into the current directory:
+
+```sh
+vendor/bin/brilkic init        # or: vendor/bin/brilkic init path/to/dir
+BRILKIC_ENV=dev php -S localhost:8080 -t public
+```
+
+The scaffold never overwrites existing files — it aborts if any are already present. It writes two config files: `init-prod.php` (loaded by default, HTTPS-ready) and `init-dev.php` (loaded when `BRILKIC_ENV=dev`, with the Secure session cookie turned off for plain-HTTP local work). `init.php` picks between them.
+
+### By hand
+
 Create a `Config` class, register routes, and call `run_app()`. A minimal app is four files:
 
 ```php

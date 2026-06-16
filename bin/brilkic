@@ -1,0 +1,11 @@
+#!/usr/bin/env php
+<?php
+declare( strict_types = 1 );
+
+// Thin launcher for the brilkic CLI. The logic lives in src/cli.php (covered by
+// phpstan and lint); this file just loads it and hands off the argument vector.
+// dirname( __DIR__ ) is the package root whether run from this repo or from a
+// consumer's vendor/josephscott/brilkic.
+require dirname( __DIR__ ) . '/src/cli.php';
+
+exit( brilkic_cli( $_SERVER['argv'] ?? [] ) );

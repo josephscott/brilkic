@@ -7,6 +7,9 @@
 			"email": "joseph@josephscott.org"
 		}
 	],
+	"bin": [
+		"bin/brilkic"
+	],
 	"require": {
 		"php": ">=8.4",
 		"nikic/fast-route": "1.3.0",
