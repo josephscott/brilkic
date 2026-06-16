@@ -24,7 +24,35 @@ function session_start_safe() : void {
 	// Must be set before session_start(); ini_set() on a session.* setting only
 	// takes effect while no session is active, which the guard above ensures.
 	ini_set( 'session.use_strict_mode', '1' );
+
+	// Harden the session cookie. HttpOnly keeps it out of JavaScript's reach, so
+	// an XSS cannot lift the session id; SameSite=Lax stops the cookie riding
+	// along on cross-site requests (CSRF defence in depth). Both default off/empty
+	// in vanilla PHP -- the same gap as use_strict_mode -- so they are pinned here
+	// rather than left to deployment php.ini.
+	ini_set( 'session.cookie_httponly', '1' );
+	ini_set( 'session.cookie_samesite', 'Lax' );
+
+	// The Secure flag (cookie sent only over HTTPS) is on by default -- production
+	// is the case to get right out of the box. A plain-HTTP local dev setup, where
+	// the browser would refuse to return a Secure cookie, opts out via Config.
+	ini_set( 'session.cookie_secure', session_cookie_secure() ? '1' : '0' );
+
 	session_start();
+}
+
+/**
+ * Whether the session cookie carries the Secure flag, so the browser only sends
+ * it over HTTPS. Defaults to true so production is secure by default. Read by name
+ * so the constant stays optional: a plain-HTTP local dev environment opts out with
+ * `const bool SESSION_COOKIE_SECURE = false` on its Config class -- otherwise the
+ * browser would refuse to return the cookie and the session would never resume.
+ * Only an explicit `false` turns it off; any other value leaves it on.
+ */
+function session_cookie_secure() : bool {
+	$constant = 'Config::SESSION_COOKIE_SECURE';
+
+	return ! ( defined( $constant ) && constant( $constant ) === false );
 }
 
 /**

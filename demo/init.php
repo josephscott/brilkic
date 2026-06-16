@@ -18,6 +18,12 @@ final class Config {
 	// off, e.g. for a stateless API that never uses sessions.
 	// const bool SESSION_AUTO_RESUME = false;
 
+	// The session cookie is always HttpOnly and SameSite=Lax, and Secure (HTTPS
+	// only) by default. This demo is served over plain HTTP via `php -S`, where a
+	// Secure cookie would never be returned by the browser, so it opts out here.
+	// A real HTTPS deployment should delete this line to keep Secure on.
+	const bool SESSION_COOKIE_SECURE = false;
+
 	// When a path does not match, run_app() tries its trailing-slash variant and
 	// redirects to it if that is a registered route -- so "/csrf/" lands on
 	// "/csrf" rather than 404. On by default; uncomment to turn it off, flip the

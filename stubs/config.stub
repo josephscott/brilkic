@@ -29,6 +29,13 @@ final class Config {
 	// On by default; define it as false to turn the auto-resume off. Read by
 	// name (session_auto_resume()) so it stays optional.
 
+	// Optional `const bool SESSION_COOKIE_SECURE` (intentionally not declared
+	// here): the Secure flag on the session cookie, so the browser only sends it
+	// over HTTPS. On by default (secure in production out of the box). Define it as
+	// false only for plain-HTTP local development, where a Secure cookie would
+	// never be returned. HttpOnly and SameSite=Lax are always on regardless. Read
+	// by name (session_cookie_secure()) so it stays optional.
+
 	// Optional trailing-slash redirect (all three intentionally not declared
 	// here; each is read by name so it stays optional):
 	//

@@ -54,6 +54,33 @@ describe( 'session', function() : void {
 		expect( ini_get( 'session.use_strict_mode' ) )->toBe( '1' );
 	} );
 
+	test( 'pins HttpOnly and SameSite=Lax on the session cookie', function() : void {
+		if ( headers_sent() ) {
+			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );
+		}
+
+		session_start_safe();
+
+		// Both default off/empty in vanilla PHP; the helper pins them every start.
+		expect( ini_get( 'session.cookie_httponly' ) )->toBe( '1' );
+		expect( ini_get( 'session.cookie_samesite' ) )->toBe( 'Lax' );
+	} );
+
+	test( 'Secure defaults on when Config omits SESSION_COOKIE_SECURE', function() : void {
+		if ( headers_sent() ) {
+			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );
+		}
+
+		// The test Config (tests/Pest.php) defines no SESSION_COOKIE_SECURE, so
+		// the default applies -- on, so production is secure out of the box.
+		expect( defined( 'Config::SESSION_COOKIE_SECURE' ) )->toBeFalse();
+		expect( session_cookie_secure() )->toBeTrue();
+
+		session_start_safe();
+
+		expect( ini_get( 'session.cookie_secure' ) )->toBe( '1' );
+	} );
+
 	test( 'destroy clears the data and tears the session down', function() : void {
 		if ( headers_sent() ) {
 			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );
