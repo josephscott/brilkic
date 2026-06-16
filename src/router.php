@@ -45,4 +45,21 @@ final class Router {
 	public static function routes() : array {
 		return self::$routes;
 	}
+
+	/** @var array<int, string> */
+	private static array $errors = [];
+
+	/**
+	 * Register a route file to render for an HTTP error status (404, 405, 500,
+	 * ...). run_app()/run_error() invoke it when that condition occurs; with no
+	 * handler registered the bare status is sent and nothing is rendered.
+	 */
+	public static function error( int $status, string $file ) : void {
+		self::$errors[$status] = $file;
+	}
+
+	/** @return array<int, string> */
+	public static function errors() : array {
+		return self::$errors;
+	}
 }

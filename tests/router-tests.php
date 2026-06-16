@@ -1,10 +1,11 @@
 <?php
 declare( strict_types = 1 );
 
-// Router keeps its registered routes in a private static array. Reset it
-// before each test so cases stay isolated from one another.
+// Router keeps its registered routes and error handlers in private static
+// arrays. Reset both before each test so cases stay isolated from one another.
 beforeEach( function() : void {
 	( new ReflectionProperty( Router::class, 'routes' ) )->setValue( null, [] );
+	( new ReflectionProperty( Router::class, 'errors' ) )->setValue( null, [] );
 } );
 
 test( 'starts with no routes', function() : void {
@@ -32,6 +33,27 @@ test( 'appends routes in registration order', function() : void {
 
 	expect( array_column( Router::routes(), 'path' ) )
 		->toBe( [ '/a', '/b', '/c' ] );
+} );
+
+test( 'starts with no error handlers', function() : void {
+	expect( Router::errors() )->toBe( [] );
+} );
+
+test( 'records an error handler keyed by status', function() : void {
+	Router::error( 404, '404.php' );
+	Router::error( 500, '500.php' );
+
+	expect( Router::errors() )->toBe( [
+		404 => '404.php',
+		500 => '500.php',
+	] );
+} );
+
+test( 'a later error handler for a status replaces the earlier one', function() : void {
+	Router::error( 404, 'first.php' );
+	Router::error( 404, 'second.php' );
+
+	expect( Router::errors() )->toBe( [ 404 => 'second.php' ] );
 } );
 
 test( 'verb helper registers the matching HTTP method', function( string $verb, string $method ) : void {

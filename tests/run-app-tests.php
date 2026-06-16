@@ -94,9 +94,10 @@ function dispatch( string $method, string $uri ) : string {
 
 describe( 'run_app()', function() : void {
 	beforeEach( function() : void {
-		// Router holds its routes in a private static array; clear it so each
-		// case dispatches against only the routes it registers.
+		// Router holds its routes and error handlers in private static arrays;
+		// clear both so each case dispatches against only what it registers.
 		( new ReflectionProperty( Router::class, 'routes' ) )->setValue( null, [] );
+		( new ReflectionProperty( Router::class, 'errors' ) )->setValue( null, [] );
 
 		$this->server = $_SERVER;
 		http_response_code( 200 );

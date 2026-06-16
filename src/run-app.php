@@ -59,10 +59,9 @@ function run_app() : void {
 				return;
 
 			case Dispatcher::METHOD_NOT_ALLOWED:
-				http_response_code( 405 );
+				$methods = [];
 				$allowed = $result[1];
 				if ( is_array( $allowed ) ) {
-					$methods = [];
 					foreach ( $allowed as $name ) {
 						if ( is_string( $name ) ) {
 							$methods[] = $name;
@@ -70,13 +69,22 @@ function run_app() : void {
 					}
 					header( 'Allow: ' . implode( ', ', $methods ) );
 				}
+				run_error( 405, [ 'allowed' => $methods ] );
 				return;
 
 			case Dispatcher::NOT_FOUND:
 			default:
-				http_response_code( 404 );
+				run_error( 404, [ 'method' => $method, 'uri' => $uri ] );
 				return;
 		}
+	} catch ( Throwable $e ) {
+		// A route or its templates threw. Log the cause -- never swallow it --
+		// then discard whatever half-rendered and put the 500 handler in its
+		// place. Buffering makes the clean swap possible: nothing has reached
+		// the client yet.
+		log_error( (string) $e );
+		ob_clean();
+		run_error( 500 );
 	} finally {
 		// Commit the buffered response: headers first, then the body.
 		ob_end_flush();
@@ -106,14 +114,55 @@ function send_default_headers() : void {
 }
 
 function run_route( string $file, mixed $vars = [] ) : void {
+	// A route that cannot be resolved or read is an internal error: hand off to
+	// the 500 handler (or the bare status when none is registered).
+	if ( ! render_route_file( $file, $vars ) ) {
+		run_error( 500 );
+	}
+}
+
+/**
+ * Send an HTTP error status and, when the app registered a handler for it via
+ * Router::error(), render that handler. With no handler the bare status is sent
+ * and nothing is rendered -- the framework default, so apps that register
+ * nothing behave exactly as before.
+ *
+ * The handler is rendered with render_route_file() directly (not run_route), so
+ * a missing handler logs and falls back to the bare status rather than recursing
+ * back through the 500 path.
+ *
+ * @param mixed $vars
+ */
+function run_error( int $status, mixed $vars = [] ) : void {
+	http_response_code( $status );
+
+	$handler = Router::errors()[$status] ?? null;
+	if ( $handler !== null ) {
+		render_route_file( $handler, $vars );
+	}
+}
+
+/**
+ * Resolve a route file inside Config::ROUTE_PATH and require it in an isolated
+ * scope, returning whether it ran.
+ *
+ * Canonicalizes both the route root and the requested path, then requires that
+ * the resolved file lives strictly inside the root. This mirrors template() and
+ * neutralizes "../" traversal and symlinks that would otherwise let a route
+ * escape Config::ROUTE_PATH. realpath() also returns false for paths that do not
+ * exist, covering the missing-file case. On any of those it logs and returns
+ * false, leaving the caller to choose the status.
+ *
+ * The file runs in an isolated scope: the path is passed positionally and read
+ * via func_get_arg(), so it is never a named variable in scope. Only $vars (the
+ * matched route parameters, or error context) is exposed. The Config class stays
+ * available as it is global. Nothing else leaks in.
+ *
+ * @param mixed $vars
+ */
+function render_route_file( string $file, mixed $vars = [] ) : bool {
 	$requested = Config::ROUTE_PATH . $file;
 
-	// Canonicalize both the route root and the requested path, then require
-	// that the resolved file lives strictly inside the root. This mirrors
-	// template() and neutralizes "../" traversal and symlinks that would
-	// otherwise let a route escape Config::ROUTE_PATH. realpath() also
-	// returns false for paths that do not exist, covering the missing-file
-	// case.
 	$base = realpath( Config::ROUTE_PATH );
 	$file = realpath( $requested );
 
@@ -124,17 +173,13 @@ function run_route( string $file, mixed $vars = [] ) : void {
 		|| ! is_readable( $file )
 	) {
 		log_error( "Route not readable: $requested" );
-		http_response_code( 500 );
-		return;
+		return false;
 	}
 
-	// Run the route file in an isolated scope, mirroring template(). The
-	// path is passed positionally and read via func_get_arg(), so it is
-	// never a named variable in scope. Only $vars, the matched route
-	// parameters, is exposed to the route file. The Config class stays
-	// available as it is global. Nothing else leaks in.
 	// @phpstan-ignore arguments.count (extra arg read via func_get_arg)
 	( static function( mixed $vars ) : void {
 		require func_get_arg( 1 );
 	} )( $vars, $file );
+
+	return true;
 }
