@@ -59,6 +59,35 @@ php -S localhost:8080 -t public
 
 A complete working example lives in [`demo/`](demo/) (`php -S localhost:8080 -t demo/public`).
 
+## Deploying with nginx + php-fpm
+
+Point the document root at your `public/` directory and route every request that
+isn't a real file to `index.php` — brilkic's single entry point handles the rest.
+
+```nginx
+server {
+    listen 80;
+    server_name example.com;
+    root /var/www/app/public;
+    index index.php;
+
+    # Serve real files directly; send everything else to the front controller.
+    location / {
+        try_files $uri /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+    }
+}
+```
+
+Only `public/` is web-served; keep `routes/`, `templates/`, `vendor/`, and your
+`Config` outside the document root.
+
 ## Core API
 
 | Call | Purpose |
