@@ -7,7 +7,9 @@ $uri = ( is_array( $vars ) && is_string( $vars['uri'] ?? null ) ) ? $vars['uri']
 
 template( 'header.php', [ 'title' => 'Not Found' ] );
 ?>
-<p>Sorry, nothing lives at <code><?= esc_html( $uri ) ?></code>.</p>
-<p><a href="/">Back home.</a></p>
+<div class="panel">
+	<p>Sorry, nothing lives at <code><?= esc_html( $uri ) ?></code>.</p>
+</div>
+<a class="back" href="/">&larr; Back home</a>
 <?php
 template( 'footer.php' );

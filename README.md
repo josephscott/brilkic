@@ -102,6 +102,8 @@ Only `public/` is web-served; keep `routes/`, `templates/`, `vendor/`, and your
 | `csrf_field( $ttl = null )` | Return a ready-to-embed hidden `<input>` carrying a fresh token. |
 | `csrf_verify()` | Validate and consume the token from `$_POST` (the one-liner for a form handler). |
 | `csrf_validate( $token )` | Validate and consume an arbitrary token value. |
+| `session_start_safe()` | Start a session with fixation protection forced on (no-op if one is active or headers are sent). |
+| `session_destroy_safe()` | Log out: clear `$_SESSION`, expire the session cookie, and discard the server-side record. |
 | `log_error( $data )` | Write to the PHP error log (arrays/objects are `print_r`'d). |
 
 Inside a route file, matched URL parameters are available as `$vars`. Error routes receive context in `$vars` too (404: `method`, `uri`; 405: `allowed`). Templates receive `$data`. The `Config` class is available everywhere (it's global); nothing else leaks into route or template scope.

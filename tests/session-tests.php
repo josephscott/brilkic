@@ -53,4 +53,35 @@ describe( 'session', function() : void {
 		// Fixation protection is pinned on regardless of php.ini.
 		expect( ini_get( 'session.use_strict_mode' ) )->toBe( '1' );
 	} );
+
+	test( 'destroy clears the data and tears the session down', function() : void {
+		if ( headers_sent() ) {
+			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );
+		}
+
+		session_start_safe();
+		$_SESSION['count'] = 7;
+		expect( session_status() )->toBe( PHP_SESSION_ACTIVE );
+
+		session_destroy_safe();
+
+		// Data is emptied in-process and the server-side session is gone.
+		expect( $_SESSION )->toBe( [] );
+		expect( session_status() )->toBe( PHP_SESSION_NONE );
+	} );
+
+	test( 'destroy starts a session first so there is something to tear down', function() : void {
+		if ( headers_sent() ) {
+			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );
+		}
+
+		// No active session and no client cookie: destroy still leaves a clean,
+		// inactive state rather than erroring.
+		expect( session_status() )->toBe( PHP_SESSION_NONE );
+
+		session_destroy_safe();
+
+		expect( $_SESSION )->toBe( [] );
+		expect( session_status() )->toBe( PHP_SESSION_NONE );
+	} );
 } );

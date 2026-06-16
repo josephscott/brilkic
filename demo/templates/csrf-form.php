@@ -5,13 +5,17 @@ declare( strict_types = 1 );
 // after a POST. csrf_field() outputs the hidden token input for the form.
 $result = $data['result'] ?? null;
 ?>
+<p class="lead">A single-use CSRF token is minted on render and verified on submit.</p>
 <?php if ( is_array( $result ) ) : ?>
-	<p style="color: <?= ( $result['ok'] ?? false ) ? 'green' : 'red' ?>">
+	<p class="flash <?= ( $result['ok'] ?? false ) ? 'flash-ok' : 'flash-err' ?>">
 		<?= esc_html( is_string( $result['msg'] ?? null ) ? $result['msg'] : '' ) ?>
 	</p>
 <?php endif; ?>
-<form method="post" action="/csrf">
+<form class="panel" method="post" action="/csrf">
 	<?= csrf_field() ?>
-	<label>Your name: <input type="text" name="name"></label>
+	<label>Your name
+		<input type="text" name="name" placeholder="optional">
+	</label>
 	<button type="submit">Submit</button>
 </form>
+<a class="back" href="/">&larr; Back home</a>

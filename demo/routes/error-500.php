@@ -6,7 +6,9 @@ declare( strict_types = 1 );
 // log_error(), so this page stays deliberately generic and leaks no detail.
 template( 'header.php', [ 'title' => 'Something went wrong' ] );
 ?>
-<p>Something went wrong on our end. The error has been logged.</p>
-<p><a href="/">Back home.</a></p>
+<div class="panel">
+	<p>Something went wrong on our end. The error has been logged.</p>
+</div>
+<a class="back" href="/">&larr; Back home</a>
 <?php
 template( 'footer.php' );
