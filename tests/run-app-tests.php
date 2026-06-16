@@ -151,6 +151,45 @@ describe( 'run_app()', function() : void {
 		expect( http_response_code() )->toBe( 405 );
 	} );
 
+	test( 'redirects a trailing-slash miss to the registered path', function() : void {
+		Router::get( '/csrf', 'hello.php' );
+
+		// "/csrf/" does not match, but stripping the slash reaches "/csrf";
+		// redirect there (302 by default) rather than 404, rendering nothing.
+		expect( dispatch( 'GET', '/csrf/' ) )->toBe( '' );
+		expect( http_response_code() )->toBe( 302 );
+	} );
+
+	test( 'carries the query string through a trailing-slash redirect', function() : void {
+		if ( ! function_exists( 'xdebug_get_headers' ) ) {
+			$this->markTestSkipped( 'xdebug_get_headers() is required to inspect sent headers.' );
+		}
+
+		Router::get( '/search', 'hello.php' );
+
+		dispatch( 'GET', '/search/?q=test&page=2' );
+
+		expect( xdebug_get_headers() )->toContain( 'Location: /search?q=test&page=2' );
+	} );
+
+	test( 'does not redirect when the trailing-slash variant is unregistered', function() : void {
+		Router::get( '/csrf', 'hello.php' );
+
+		// "/nope/" stripped is "/nope", which is not a route either: 404, no
+		// redirect.
+		expect( dispatch( 'GET', '/nope/' ) )->toBe( '' );
+		expect( http_response_code() )->toBe( 404 );
+	} );
+
+	test( 'never strips the root path to an empty redirect target', function() : void {
+		Router::get( '/only', 'hello.php' );
+
+		// "/" has a trailing slash but no route; stripping it would leave "",
+		// so it must 404 rather than redirect.
+		expect( dispatch( 'GET', '/' ) )->toBe( '' );
+		expect( http_response_code() )->toBe( 404 );
+	} );
+
 	test( 'strips the query string before matching', function() : void {
 		Router::get( '/search', 'hello.php' );
 
@@ -201,5 +240,49 @@ describe( 'run_app()', function() : void {
 		$output = (string) ob_get_clean();
 
 		expect( $output )->toBe( 'Hello from the route' );
+	} );
+} );
+
+describe( 'trailing-slash redirect config', function() : void {
+	// The test Config stand-in declares none of the trailing-slash constants, so
+	// each helper sees its default. (Their override branches read by name, the
+	// same shape as the session/csrf helpers, so the defaults are what matter.)
+	test( 'redirect is on by default when Config omits TRAILING_SLASH_REDIRECT', function() : void {
+		expect( defined( 'Config::TRAILING_SLASH_REDIRECT' ) )->toBeFalse();
+		expect( trailing_slash_redirect() )->toBeTrue();
+	} );
+
+	test( 'direction strips by default when Config omits TRAILING_SLASH_ADD', function() : void {
+		expect( defined( 'Config::TRAILING_SLASH_ADD' ) )->toBeFalse();
+		expect( trailing_slash_add() )->toBeFalse();
+	} );
+
+	test( 'redirect code defaults to 302 when Config omits TRAILING_SLASH_REDIRECT_CODE', function() : void {
+		expect( defined( 'Config::TRAILING_SLASH_REDIRECT_CODE' ) )->toBeFalse();
+		expect( trailing_slash_redirect_code() )->toBe( 302 );
+	} );
+} );
+
+describe( 'trailing_slash_alternate()', function() : void {
+	test( 'strips a single trailing slash when adding is off', function() : void {
+		expect( trailing_slash_alternate( '/csrf/', false ) )->toBe( '/csrf' );
+	} );
+
+	test( 'returns null for a slashless path when adding is off', function() : void {
+		expect( trailing_slash_alternate( '/csrf', false ) )->toBeNull();
+	} );
+
+	test( 'leaves the root path alone when adding is off', function() : void {
+		// Stripping "/" would yield an empty target, so there is nothing to try.
+		expect( trailing_slash_alternate( '/', false ) )->toBeNull();
+	} );
+
+	test( 'appends a trailing slash when adding is on', function() : void {
+		expect( trailing_slash_alternate( '/csrf', true ) )->toBe( '/csrf/' );
+	} );
+
+	test( 'returns null for an already-slashed path when adding is on', function() : void {
+		expect( trailing_slash_alternate( '/csrf/', true ) )->toBeNull();
+		expect( trailing_slash_alternate( '/', true ) )->toBeNull();
 	} );
 } );

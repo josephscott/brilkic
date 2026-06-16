@@ -28,4 +28,19 @@ final class Config {
 	// cookie, so a continued session's data is available before routes run.
 	// On by default; define it as false to turn the auto-resume off. Read by
 	// name (session_auto_resume()) so it stays optional.
+
+	// Optional trailing-slash redirect (all three intentionally not declared
+	// here; each is read by name so it stays optional):
+	//
+	//   `const bool TRAILING_SLASH_REDIRECT` -- when a path does not match,
+	//   run_app() tries its trailing-slash variant and, if that is a registered
+	//   route, redirects to it instead of 404. On by default; define it as
+	//   false to turn the redirect off.
+	//
+	//   `const bool TRAILING_SLASH_ADD` -- direction. Defaults to false (strip a
+	//   trailing slash, so "/csrf/" -> "/csrf"). Define it as true to reverse it
+	//   (add a trailing slash, so "/csrf" -> "/csrf/").
+	//
+	//   `const int TRAILING_SLASH_REDIRECT_CODE` -- redirect status. Defaults to
+	//   302 (temporary); set to 301 for a permanent, cacheable redirect.
 }
