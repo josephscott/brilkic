@@ -140,7 +140,13 @@ function session_destroy_safe() : void {
 		] );
 	}
 
-	session_destroy();
+	// session_destroy() is the actual logout: it discards the server-side
+	// record. A false return means that teardown did not happen and the session
+	// is still live server-side -- a security-relevant failure that must not pass
+	// silently, so log it rather than drop the signal on the floor.
+	if ( ! session_destroy() ) {
+		log_error( 'session_destroy() failed; server-side session may still be active' );
+	}
 }
 
 /**
