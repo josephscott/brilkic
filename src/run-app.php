@@ -57,8 +57,13 @@ function run_app() : void {
 		switch ( $result[0] ) {
 			case Dispatcher::FOUND:
 				$file = $result[1];
+				// FastRoute hands back the matched path parameters in
+				// $result[2]; narrow it to an array (the same defensive shape
+				// used for $result[1] and the 405 case) before passing it on,
+				// since the dispatcher's return is loosely typed.
+				$vars = is_array( $result[2] ) ? $result[2] : [];
 				if ( is_string( $file ) ) {
-					run_route( $file, $result[2] );
+					run_route( $file, $vars );
 				}
 				return;
 
@@ -214,7 +219,17 @@ function trailing_slash_alternate( string $uri, bool $add ) : ?string {
 	return substr( $uri, 0, -1 );
 }
 
-function run_route( string $file, mixed $vars = [] ) : void {
+/**
+ * Render a route file from Config::ROUTE_PATH, handing it $vars. On failure
+ * (unresolvable or unreadable file) it falls back to the 500 handler.
+ *
+ * $vars is the route's entire variable surface -- the matched path parameters,
+ * or error context for an error handler -- and is always an array so the route
+ * file can index it without a guard.
+ *
+ * @param array<array-key, mixed> $vars
+ */
+function run_route( string $file, array $vars = [] ) : void {
 	// A route that cannot be resolved or read is an internal error: hand off to
 	// the 500 handler (or the bare status when none is registered).
 	if ( ! render_route_file( $file, $vars ) ) {
@@ -232,9 +247,9 @@ function run_route( string $file, mixed $vars = [] ) : void {
  * a missing handler logs and falls back to the bare status rather than recursing
  * back through the 500 path.
  *
- * @param mixed $vars
+ * @param array<array-key, mixed> $vars
  */
-function run_error( int $status, mixed $vars = [] ) : void {
+function run_error( int $status, array $vars = [] ) : void {
 	http_response_code( $status );
 
 	$handler = Router::errors()[$status] ?? null;
@@ -259,9 +274,9 @@ function run_error( int $status, mixed $vars = [] ) : void {
  * matched route parameters, or error context) is exposed. The Config class stays
  * available as it is global. Nothing else leaks in.
  *
- * @param mixed $vars
+ * @param array<array-key, mixed> $vars
  */
-function render_route_file( string $file, mixed $vars = [] ) : bool {
+function render_route_file( string $file, array $vars = [] ) : bool {
 	$requested = Config::ROUTE_PATH . $file;
 
 	$base = realpath( Config::ROUTE_PATH );
@@ -278,7 +293,7 @@ function render_route_file( string $file, mixed $vars = [] ) : bool {
 	}
 
 	// @phpstan-ignore arguments.count (extra arg read via func_get_arg)
-	( static function( mixed $vars ) : void {
+	( static function( array $vars ) : void {
 		require func_get_arg( 1 );
 	} )( $vars, $file );
 

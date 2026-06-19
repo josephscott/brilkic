@@ -7,9 +7,9 @@ declare( strict_types = 1 );
 /**
  * Run template() and return whatever it rendered to the output buffer.
  *
- * @param mixed $data
+ * @param ?array<string, mixed> $data
  */
-function render_template( string $file, mixed $data = null ) : string {
+function render_template( string $file, ?array $data = null ) : string {
 	ob_start();
 	if ( $data === null ) {
 		template( $file );
@@ -37,9 +37,11 @@ test( '$data defaults to an empty array when omitted', function() : void {
 		->toBe( 'array (' . "\n" . ')' );
 } );
 
-test( 'accepts non-array data', function() : void {
-	expect( render_template( 'dump-data.php', 'just a string' ) )
-		->toBe( "'just a string'" );
+test( 'rejects non-array data with a TypeError', function() : void {
+	// $data is typed array, so a scalar is refused at the call boundary under
+	// strict_types -- rather than reaching the template as a bad offset target.
+	expect( fn () => template( 'dump-data.php', 'just a string' ) )
+		->toThrow( TypeError::class );
 } );
 
 test( 'leaks only $data into the template scope', function() : void {

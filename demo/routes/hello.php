@@ -3,7 +3,7 @@ declare( strict_types = 1 );
 
 // Registered via Router::get( '/hello/{name}', 'hello.php' ). The matched URL
 // segment arrives in $vars; it is untrusted input, so escape it on output.
-$name = ( is_array( $vars ) && is_string( $vars['name'] ?? null ) ) ? $vars['name'] : '';
+$name = is_string( $vars['name'] ?? null ) ? $vars['name'] : '';
 
 template( 'header.php', [ 'title' => 'Routing' ] );
 ?>

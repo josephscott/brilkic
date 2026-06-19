@@ -1,7 +1,7 @@
 <?php
 declare( strict_types = 1 );
 
-$title = ( is_array( $data ) && isset( $data['title'] ) && is_string( $data['title'] ) )
+$title = is_string( $data['title'] ?? null )
 	? $data['title']
 	: 'My Site';
 ?>

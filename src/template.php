@@ -1,7 +1,16 @@
 <?php
 declare( strict_types = 1 );
 
-function template( string $file, mixed $data = [] ) : void {
+/**
+ * Render a template from Config::TEMPLATE_PATH, exposing $data to it.
+ *
+ * $data is the template's entire variable surface: it is the only named variable
+ * in the render scope. It is always an array (defaulting to empty) so a template
+ * can index it -- `$data['title']` -- without first proving it is one.
+ *
+ * @param array<string, mixed> $data
+ */
+function template( string $file, array $data = [] ) : void {
 	$requested = Config::TEMPLATE_PATH . $file;
 
 	// Canonicalize both the template root and the requested path, then
@@ -29,7 +38,7 @@ function template( string $file, mixed $data = [] ) : void {
 	// variable in scope. The Config class stays available as it is
 	// global. Nothing else leaks into the template.
 	// @phpstan-ignore arguments.count (extra arg read via func_get_arg)
-	( static function( mixed $data ) : void {
+	( static function( array $data ) : void {
 		require func_get_arg( 1 );
 	} )( $data, $file );
 }

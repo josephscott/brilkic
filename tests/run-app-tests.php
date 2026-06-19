@@ -7,9 +7,9 @@ declare( strict_types = 1 );
 /**
  * Run run_route() and return whatever it rendered to the output buffer.
  *
- * @param mixed $vars
+ * @param ?array<array-key, mixed> $vars
  */
-function render_route( string $file, mixed $vars = null ) : string {
+function render_route( string $file, ?array $vars = null ) : string {
 	ob_start();
 	if ( $vars === null ) {
 		run_route( $file );
@@ -35,6 +35,13 @@ test( 'exposes $vars to the route', function() : void {
 test( '$vars defaults to an empty array when omitted', function() : void {
 	expect( render_route( 'dump-vars.php' ) )
 		->toBe( 'array (' . "\n" . ')' );
+} );
+
+test( 'rejects non-array vars with a TypeError', function() : void {
+	// $vars is typed array, so a scalar is refused at the call boundary under
+	// strict_types rather than reaching the route as a bad offset target.
+	expect( fn () => run_route( 'dump-vars.php', 'just a string' ) )
+		->toThrow( TypeError::class );
 } );
 
 test( 'leaks only $vars into the route scope', function() : void {

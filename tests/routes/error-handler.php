@@ -5,6 +5,6 @@ declare( strict_types = 1 );
 // request path when the error context carries one (404).
 echo 'ERROR-HANDLER';
 
-if ( is_array( $vars ) && is_string( $vars['uri'] ?? null ) ) {
+if ( is_string( $vars['uri'] ?? null ) ) {
 	echo ':' . $vars['uri'];
 }
