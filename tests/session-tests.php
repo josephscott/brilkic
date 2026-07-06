@@ -66,6 +66,17 @@ describe( 'session', function() : void {
 		expect( ini_get( 'session.cookie_samesite' ) )->toBe( 'Lax' );
 	} );
 
+	test( 'names the session cookie SID rather than vanilla PHP PHPSESSID', function() : void {
+		if ( headers_sent() ) {
+			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );
+		}
+
+		session_start_safe();
+
+		// PHP's default PHPSESSID advertises the platform; the helper renames it.
+		expect( session_name() )->toBe( 'SID' );
+	} );
+
 	test( 'Secure defaults on when Config omits SESSION_OPTIONS', function() : void {
 		if ( headers_sent() ) {
 			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );

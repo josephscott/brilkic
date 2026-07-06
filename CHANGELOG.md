@@ -1,5 +1,9 @@
 # Changelog - brilkic
 
+
+## ???
+- Default session cookie name is now SID
+
 ## 0.0.2 : 19 Jun 2026
 - `template()` and `run_route()` now require an `array` for their data argument
   (previously `mixed`), so routes and templates can index `$data`/`$vars`

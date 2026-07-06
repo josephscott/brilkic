@@ -10,10 +10,11 @@ declare( strict_types = 1 );
  * exposed through one Config knob (SESSION_OPTIONS) rather than a constant per
  * setting. The options are layered in three bands:
  *
- *   1. Overridable defaults -- the cookie is Secure (HTTPS-only) and SameSite=Lax
- *      out of the box, both off/empty in vanilla PHP. An app overrides either:
+ *   1. Overridable defaults -- the cookie is named SID (vanilla PHP's PHPSESSID
+ *      advertises the platform), Secure (HTTPS-only) and SameSite=Lax out of the
+ *      box, the latter two off/empty in vanilla PHP. An app overrides any of them:
  *      plain-HTTP local dev sets cookie_secure => false, a cross-site embed sets
- *      cookie_samesite => 'None'.
+ *      cookie_samesite => 'None', an app names its own cookie with name => 'myapp'.
  *   2. The app's SESSION_OPTIONS -- anything it sets wins over the defaults above.
  *   3. Hard floors -- use_strict_mode and cookie_httponly are merged LAST, so an
  *      app cannot weaken them. use_strict_mode makes PHP reject a session ID it
@@ -37,6 +38,7 @@ function session_start_safe() : void {
 	$options = array_merge(
 		// 1. Overridable secure-by-default cookie attributes.
 		[
+			'name'            => 'SID',
 			'cookie_secure'   => true,
 			'cookie_samesite' => 'Lax',
 		],
