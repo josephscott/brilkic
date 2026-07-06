@@ -38,7 +38,7 @@ function session_start_safe() : void {
 	$options = array_merge(
 		// 1. Overridable secure-by-default cookie attributes.
 		[
-			'name'            => 'SID',
+			'name'            => session_effective_name(),
 			'cookie_secure'   => true,
 			'cookie_samesite' => 'Lax',
 		],
@@ -80,6 +80,26 @@ function session_options() : array {
 }
 
 /**
+ * The name the session cookie is actually issued under.
+ *
+ * This is the single source of truth for the cookie name so the two places
+ * brilkic touches it cannot drift: session_start_safe() names the cookie with
+ * it, and session_resume_if_present() looks for it under the same name. It must
+ * not use PHP's session_name(), which returns the session.name ini directive --
+ * that is still the platform default (PHPSESSID) at the top of run_app(), before
+ * any session has started, so the resume check would miss the real cookie.
+ *
+ * brilkic renames the cookie to SID by default (vanilla PHP's PHPSESSID
+ * advertises the platform); an app overrides that with `name` in its
+ * SESSION_OPTIONS, exactly as session_start_safe() layers it.
+ */
+function session_effective_name() : string {
+	$name = session_options()['name'] ?? 'SID';
+
+	return is_string( $name ) ? $name : 'SID';
+}
+
+/**
  * Resume a session only when the client already presents one.
  *
  * The session cookie is the only evidence that a client has a session, so a
@@ -96,7 +116,7 @@ function session_resume_if_present() : void {
 		return;
 	}
 
-	if ( ! isset( $_COOKIE[session_name()] ) ) {
+	if ( ! isset( $_COOKIE[session_effective_name()] ) ) {
 		return;
 	}
 

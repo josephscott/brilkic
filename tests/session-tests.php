@@ -45,13 +45,35 @@ describe( 'session', function() : void {
 			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );
 		}
 
-		$_COOKIE[session_name()] = 'client-supplied-id';
+		// Seed the cookie under the name the client actually holds it under --
+		// the effective name brilkic issued it with, not session_name()'s ini
+		// default, which is what a real returning request presents.
+		$_COOKIE[session_effective_name()] = 'client-supplied-id';
 
 		session_resume_if_present();
 
 		expect( session_status() )->toBe( PHP_SESSION_ACTIVE );
 		// Fixation protection is pinned on regardless of php.ini.
 		expect( ini_get( 'session.use_strict_mode' ) )->toBe( '1' );
+	} );
+
+	test( 'resumes under the effective cookie name even when session.name is still the ini default', function() : void {
+		if ( headers_sent() ) {
+			$this->markTestSkipped( 'A session cannot be started once headers are sent.' );
+		}
+
+		// Reproduce a fresh web request: run_app() calls
+		// session_resume_if_present() before any session has started, so
+		// session.name is still PHP's ini default (PHPSESSID) here -- not the SID
+		// that session_start_safe() will apply. The browser, however, holds the
+		// cookie under the effective name the previous request set it with (SID).
+		// The resume check must look under that effective name, not session_name().
+		ini_set( 'session.name', 'PHPSESSID' );
+		$_COOKIE = [ 'SID' => 'client-supplied-id' ];
+
+		session_resume_if_present();
+
+		expect( session_status() )->toBe( PHP_SESSION_ACTIVE );
 	} );
 
 	test( 'pins HttpOnly and SameSite=Lax on the session cookie', function() : void {

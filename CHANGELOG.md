@@ -1,5 +1,7 @@
 # Changelog - brilkic
 
+## 0.0.4 : 06 Jul 2026
+- Fix session resume when the cookie is renamed, and default name of SID
 
 ## 0.0.3 : 06 Jul 2026
 - Default session cookie name is now SID
