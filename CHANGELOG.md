@@ -1,7 +1,7 @@
 # Changelog - brilkic
 
 
-## ???
+## 0.0.3 : 06 Jul 2026
 - Default session cookie name is now SID
 
 ## 0.0.2 : 19 Jun 2026
